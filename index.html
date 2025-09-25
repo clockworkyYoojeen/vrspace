@@ -67,7 +67,7 @@
             <p>Controls:</p>
             <ul>
                 <li>Move: VR Controllers</li>
-                <li>Rotate: Right Stick/Grip</li>
+                <li>Look: Head movement</li>
                 <li>Reset: Press 'R' key</li>
             </ul>
             <div id="status">Initializing WebXR...</div>
@@ -75,10 +75,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/build/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/controls/VRControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/effects/VREffect.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/webxr/VRButton.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/webxr/XRControllerModelFactory.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 
     <script>
         // Main WebXR application
@@ -91,6 +88,7 @@
                 this.controllers = [];
                 this.raycaster = new THREE.Raycaster();
                 this.selectedPart = null;
+                this.isInVR = false;
                 
                 this.init();
             }
@@ -110,17 +108,17 @@
                 this.renderer.xr.enabled = true;
                 document.getElementById('container').appendChild(this.renderer.domElement);
                 
-                // Add VR button
-                document.getElementById('webxr-button').appendChild(VRButton.createButton(this.renderer));
-                
                 // Setup lighting
                 this.setupLighting();
                 
                 // Create human figure
                 this.createHumanFigure();
                 
-                // Setup controllers
-                this.setupControllers();
+                // Add floor
+                this.addFloor();
+                
+                // Setup WebXR button
+                this.setupWebXRButton();
                 
                 // Add event listeners
                 this.setupEventListeners();
@@ -139,13 +137,30 @@
                 // Directional light
                 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
                 directionalLight.position.set(5, 5, 5);
-                directionalLight.castShadow = true;
                 this.scene.add(directionalLight);
                 
                 // Point light
                 const pointLight = new THREE.PointLight(0x4444ff, 0.8, 10);
                 pointLight.position.set(2, 3, 2);
                 this.scene.add(pointLight);
+            }
+            
+            addFloor() {
+                const floorGeometry = new THREE.PlaneGeometry(20, 20);
+                const floorMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                this.scene.add(floor);
+                
+                // Add grid helper
+                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+                gridHelper.position.y = -0.49;
+                this.scene.add(gridHelper);
             }
             
             createHumanFigure() {
@@ -179,10 +194,9 @@
                     mesh.userData = { partName: partName, isBodyPart: true };
                     
                     // Add wireframe for better visibility
-                    const wireframe = new THREE.LineSegments(
-                        new THREE.EdgesGeometry(geometry),
-                        new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
-                    );
+                    const wireframeGeometry = new THREE.EdgesGeometry(geometry);
+                    const wireframeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
+                    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
                     mesh.add(wireframe);
                     
                     this.humanFigure.add(mesh);
@@ -218,76 +232,64 @@
                 });
             }
             
-            setupControllers() {
-                const controllerModelFactory = new THREE.XRControllerModelFactory();
+            setupWebXRButton() {
+                const button = document.getElementById('webxr-button');
                 
-                // Left controller
-                const leftController = this.renderer.xr.getController(0);
-                leftController.addEventListener('selectstart', () => this.onSelectStart(0));
-                leftController.addEventListener('selectend', () => this.onSelectEnd(0));
-                this.scene.add(leftController);
-                
-                const leftGrip = this.renderer.xr.getControllerGrip(0);
-                leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
-                this.scene.add(leftGrip);
-                
-                // Right controller
-                const rightController = this.renderer.xr.getController(1);
-                rightController.addEventListener('selectstart', () => this.onSelectStart(1));
-                rightController.addEventListener('selectend', () => this.onSelectEnd(1));
-                this.scene.add(rightController);
-                
-                const rightGrip = this.renderer.xr.getControllerGrip(1);
-                rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
-                this.scene.add(rightGrip);
-                
-                this.controllers = [leftController, rightController];
-                
-                // Add controller rays
-                this.controllers.forEach(controller => {
-                    const geometry = new THREE.BufferGeometry();
-                    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, -1], 3));
-                    geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5, 0, 0, 0], 3));
-                    
-                    const material = new THREE.LineBasicMaterial({ 
-                        vertexColors: true, 
-                        blending: THREE.AdditiveBlending 
-                    });
-                    
-                    const ray = new THREE.Line(geometry, material);
-                    ray.scale.z = 5;
-                    controller.add(ray);
-                });
-            }
-            
-            onSelectStart(controllerIndex) {
-                const controller = this.controllers[controllerIndex];
-                this.raycaster.setFromXRController(controller);
-                
-                const intersects = this.raycaster.intersectObjects(this.humanFigure.children, true);
-                
-                if (intersects.length > 0) {
-                    const object = intersects[0].object;
-                    if (object.userData.isBodyPart) {
-                        this.selectedPart = {
-                            object: object,
-                            controller: controller,
-                            offset: new THREE.Vector3().subVectors(object.position, controller.position)
-                        };
-                        
-                        // Highlight selected part
-                        object.material.emissive.setHex(0x333300);
-                        object.material.needsUpdate = true;
-                    }
+                if ('xr' in navigator) {
+                    navigator.xr.isSessionSupported('immersive-vr')
+                        .then((supported) => {
+                            if (supported) {
+                                button.addEventListener('click', () => this.enterVR());
+                                document.getElementById('status').textContent = 'VR supported - Click Enter VR';
+                            } else {
+                                button.style.display = 'none';
+                                document.getElementById('status').textContent = 'VR not supported by your device';
+                                this.setupDesktopControls();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error checking VR support:', error);
+                            button.style.display = 'none';
+                            document.getElementById('status').textContent = 'Error checking VR support';
+                            this.setupDesktopControls();
+                        });
+                } else {
+                    button.style.display = 'none';
+                    document.getElementById('status').textContent = 'WebXR not supported by your browser';
+                    this.setupDesktopControls();
                 }
             }
             
-            onSelectEnd(controllerIndex) {
-                if (this.selectedPart && this.selectedPart.controller === this.controllers[controllerIndex]) {
-                    // Remove highlight
-                    this.selectedPart.object.material.emissive.setHex(0x000000);
-                    this.selectedPart.object.material.needsUpdate = true;
-                    this.selectedPart = null;
+            setupDesktopControls() {
+                // Add orbit controls for desktop
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                script.onload = () => {
+                    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                    this.controls.enableDamping = true;
+                    this.controls.dampingFactor = 0.05;
+                };
+                document.head.appendChild(script);
+            }
+            
+            async enterVR() {
+                try {
+                    const session = await navigator.xr.requestSession('immersive-vr');
+                    this.isInVR = true;
+                    this.renderer.xr.setSession(session);
+                    
+                    document.getElementById('status').textContent = 'In VR Session - Use controllers to interact';
+                    document.getElementById('webxr-button').textContent = 'Exit VR';
+                    
+                    session.addEventListener('end', () => {
+                        this.isInVR = false;
+                        document.getElementById('status').textContent = 'VR session ended';
+                        document.getElementById('webxr-button').textContent = 'Enter VR';
+                    });
+                    
+                } catch (error) {
+                    console.error('Error entering VR:', error);
+                    document.getElementById('status').textContent = 'Error entering VR: ' + error.message;
                 }
             }
             
@@ -320,7 +322,7 @@
             
             animateFigure() {
                 // Simple animation cycle
-                const parts = this.humanFigure.children.filter(child => child.userData.isBodyPart);
+                const parts = this.humanFigure.children.filter(child => child.userData && child.userData.isBodyPart);
                 
                 parts.forEach((part, index) => {
                     const originalY = part.position.y;
@@ -337,19 +339,18 @@
             }
             
             animate() {
-                // Update selected part position if dragging
-                if (this.selectedPart) {
-                    const controller = this.selectedPart.controller;
-                    this.selectedPart.object.position.copy(controller.position).add(this.selectedPart.offset);
-                }
+                // Update TWEEN animations
+                TWEEN.update();
                 
-                // Rotate human figure slowly
-                if (!this.selectedPart) {
+                // Rotate human figure slowly when not in VR
+                if (!this.isInVR && this.humanFigure) {
                     this.humanFigure.rotation.y += 0.005;
                 }
                 
-                // Update TWEEN animations
-                TWEEN.update();
+                // Update controls if they exist
+                if (this.controls) {
+                    this.controls.update();
+                }
                 
                 // Render scene
                 this.renderer.render(this.scene, this.camera);
@@ -360,11 +361,6 @@
         window.addEventListener('load', () => {
             new WebXRHumanFigure();
         });
-        
-        // Add TWEEN.js for animations
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js';
-        document.head.appendChild(script);
     </script>
 </body>
 </html>
