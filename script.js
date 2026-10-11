@@ -1,5 +1,5 @@
 alert("VR Space!");
-import * as THREE from "./three.module.js";
+/*import * as THREE from "./three.module.js";
 
 const width = window.innerWidth, height = window.innerHeight;
 
