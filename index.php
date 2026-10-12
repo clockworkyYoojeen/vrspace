@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Three.js + VR</title>
+  <title>Three.js + VR!</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -36,6 +36,13 @@
     );
     camera.position.set(2, 2, 5);
 
+        // --- Куб ---
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.set(-9, 5, -8);
+    // scene.add(cube);
+
     // --- Рендерер ---
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -53,13 +60,6 @@
     const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
     directionalLight.position.set(3, 5, 2);
     scene.add(directionalLight);
-
-    // --- Куб ---
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.set(0, 1, -2);
-    scene.add(cube);
 
     // --- Пол (чтобы в VR было ощущение пространства) ---
     const floorGeometry = new THREE.PlaneGeometry(20, 20);
