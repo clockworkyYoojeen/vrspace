@@ -1,10 +1,12 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { VRButton } from 'three/addons/webxr/VRButton.js';
-
+    // --- Вспомогательный объект (показывает оси) ---
+    const axesHelper = new THREE.AxesHelper(3);  
     // --- Сцена ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x101020);
+    scene.add( axesHelper );
 
     // --- Камера ---
     const camera = new THREE.PerspectiveCamera(
@@ -33,12 +35,28 @@
     directionalLight.position.set(3, 5, 2);
     scene.add(directionalLight);
 
-    // --- Куб ---
+    // --- Кубы ---
     const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.set(0, 1, -2);
-    scene.add(cube);
+
+    const material1 = new THREE.MeshLambertMaterial({ color: 'orange' });
+    const material2 = new THREE.MeshMatcapMaterial({ color: 'skyblue' });
+    const material3 = new THREE.MeshToonMaterial({ color: 'pink' });
+
+    const cube1 = new THREE.Mesh(geometry, material1);
+    const cube2 = new THREE.Mesh(geometry, material2);
+    const cube3 = new THREE.Mesh(geometry, material3);
+
+    cube1.position.set(-3, 1, 1);
+    cube2.position.set(1, 2, -2);
+    // --- повернём синий куб по осям X и Y ---
+    cube2.rotateX(2)
+    cube2.rotateY(5)
+
+    cube3.position.set(4, -1, -5);
+
+    scene.add(cube1);
+    scene.add(cube2);
+    scene.add(cube3);
 
     // --- Пол (чтобы в VR было ощущение пространства) ---
     const floorGeometry = new THREE.PlaneGeometry(20, 20);
@@ -66,8 +84,8 @@
     // ВАЖНО: используем setAnimationLoop вместо requestAnimationFrame
     // Это обязательно для работы в VR-режиме
     renderer.setAnimationLoop(() => {
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
+      cube1.rotation.x += 0.01;
+      cube1.rotation.y += 0.01;
 
       controls.update();
       renderer.render(scene, camera);
