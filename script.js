@@ -38,30 +38,44 @@
     // --- Кубы ---
     const geometry = new THREE.BoxGeometry();
 
+    // --- задаём материал из которого "сделан" объект и его цвет
     const material1 = new THREE.MeshLambertMaterial({ color: 'orange' });
     const material2 = new THREE.MeshMatcapMaterial({ color: 'skyblue' });
     const material3 = new THREE.MeshToonMaterial({ color: 'pink' });
 
+    // --- создаём объекты, задаём форму (куб) и материал
     const cube1 = new THREE.Mesh(geometry, material1);
     const cube2 = new THREE.Mesh(geometry, material2);
     const cube3 = new THREE.Mesh(geometry, material3);
 
-    cube1.position.set(-3, 1, 1);
+    cube1.position.set(0, 0, 0);
     cube2.position.set(1, 2, -2);
+    cube3.position.set(4, -1, -5);
+
     // --- повернём синий куб по осям X и Y ---
     cube2.rotateX(2)
     cube2.rotateY(5)
 
-    cube3.position.set(4, -1, -5);
 
-    scene.add(cube1);
-    scene.add(cube2);
-    scene.add(cube3);
+    // scene.add(cube1);
+    // scene.add(cube2);
+    // scene.add(cube3);
+
+    const group = new THREE.Group();
+
+    group.add(cube1)
+    group.add(cube2)
+    group.add(cube3)
+
+    scene.add(group)
+
+
+
 
     // --- Пол (чтобы в VR было ощущение пространства) ---
     const floorGeometry = new THREE.PlaneGeometry(20, 20);
-    const floorMaterial = new THREE.MeshStandardMaterial({
-      color: 0x333333,
+    const floorMaterial = new THREE.MeshPhysicalMaterial({
+      color: 'lightgreen',
       roughness: 0.8,
     });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -84,12 +98,19 @@
     // ВАЖНО: используем setAnimationLoop вместо requestAnimationFrame
     // Это обязательно для работы в VR-режиме
     renderer.setAnimationLoop(() => {
-      cube1.rotation.x += 0.01;
-      cube1.rotation.y += 0.01;
+      group.rotation.x += 0.01;
+      group.rotation.y += 0.01;
 
-      controls.update();
+      // controls.update();
       renderer.render(scene, camera);
     });
+
+    // const tick = () => {
+    //   cube2.rotation.x += 0.05;
+    //   window.requestAnimationFrame(tick)
+    // }
+
+    // tick();
 
     // --- Обработка изменения размера окна ---
     window.addEventListener('resize', () => {
