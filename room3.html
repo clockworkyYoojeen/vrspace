@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js + VR — Оранжевый металлический шар</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // --- Сцена ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x101020);
+
+    // --- Камера ---
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 1.6, 3); // высота глаз ~1.6 м
+
+    // --- Рендерер ---
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // --- Кнопка входа в VR ---
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    // --- Окружение для металлических отражений ---
+    // Без environment map металл выглядит чёрным — это критично для "блеска"
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envMap;
+
+    // --- Освещение ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(3, 5, 2);
+    scene.add(directionalLight);
+
+    // --- Пол ---
+    const floorGeometry = new THREE.PlaneGeometry(20, 20);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    scene.add(floor);
+
+    const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+    gridHelper.position.y = 0.001;
+    scene.add(gridHelper);
+
+    // --- Шар: оранжевый, металлический, диаметр 1 м ---
+    // Диаметр 1 м => радиус 0.5 м
+    const SPHERE_RADIUS = 0.5;
+    const sphereGeometry = new THREE.SphereGeometry(SPHERE_RADIUS, 64, 64);
+    const sphereMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff6600,     // оранжевый
+      metalness: 1.0,      // полностью металлический
+      roughness: 0.15,     // низкая шероховатость => сильный блеск
+      envMapIntensity: 1.2,
+    });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    scene.add(sphere);
+
+    // --- Параметры анимации ---
+    // Высота центра шара, когда он "висит": 0.5 м от пола — это низ шара?
+    // Или центр? Читаем задание: "диаметр 1 м, примерно 0,5 м от пола".
+    // Логично: нижняя точка шара на 0.5 м от пола => центр на 0.5 + 0.5 = 1.0 м
+    // Но если "шар на 0.5 м от пола" — обычно имеют в виду центр. 
+    // Сделаем так, чтобы НИЗ шара был на 0.5 м от пола:
+    //   centerY_top = 0.5 (от пола до низа) + 0.5 (радиус) = 1.0 м
+    // При падении: низ шара касается пола => centerY_bottom = 0.5 м (радиус)
+    const START_Y = 1.0;   // центр шара в верхней точке
+    const GROUND_Y = SPHERE_RADIUS; // центр шара, когда он на полу (0.5)
+
+    // Длительности в секундах
+    const FALL_DURATION  = 2.5; // плавное опускание 2–3 с
+    const RISE_DURATION  = 0.75; // подпрыгивание 0.5–1 с
+    const CYCLE_DURATION = FALL_DURATION + RISE_DURATION; // 3.25 с
+
+    // Плавность: ease-in-out для обеих фаз
+    // Используем smoothstep — красиво и просто
+    const smoothstep = (t) => t * t * (3 - 2 * t);
+
+    // --- OrbitControls для просмотра мышью (в VR не мешает) ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.0, 0);
+    controls.enableDamping = true;
+    controls.update();
+
+    // --- Анимация ---
+    const clock = new THREE.Clock();
+
+    renderer.setAnimationLoop(() => {
+      const t = clock.getElapsedTime();
+
+      // Позиция внутри цикла [0, CYCLE_DURATION)
+      const localTime = t % CYCLE_DURATION;
+
+      let sphereY;
+
+      if (localTime < FALL_DURATION) {
+        // Фаза падения: от START_Y до GROUND_Y
+        const progress = localTime / FALL_DURATION; // 0..1
+        const eased = smoothstep(progress);         // плавный старт и финиш
+        sphereY = START_Y + (GROUND_Y - START_Y) * eased;
+      } else {
+        // Фаза подъёма: от GROUND_Y до START_Y
+        const progress = (localTime - FALL_DURATION) / RISE_DURATION; // 0..1
+        const eased = smoothstep(progress);
+        sphereY = GROUND_Y + (START_Y - GROUND_Y) * eased;
+      }
+
+      sphere.position.y = sphereY;
+
+      // Небольшое вращение для живости (опционально)
+      sphere.rotation.y = t * 0.5;
+
+      controls.update();
+      renderer.render(scene, camera);
+    });
+
+    // --- Resize ---
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
