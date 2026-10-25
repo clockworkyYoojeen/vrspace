@@ -173,6 +173,7 @@
       roughness: 1.0,
     });
     const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    clouds.position.set(1,2,-2);
     scene.add(clouds);
 
     // ============================================================
