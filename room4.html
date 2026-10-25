@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js + VR — Земной шар</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    /* Подпись, чтобы было понятно, что это тестовая сцена */
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 14px;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 10px;
+      border-radius: 6px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">🌍 Земной шар — текстура с threejs.org</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // ============================================================
+    // 1. Сцена
+    // ============================================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050510);
+
+    // ============================================================
+    // 2. Камера (высота глаз ~1.6 м)
+    // ============================================================
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 1.6, 3);
+
+    // ============================================================
+    // 3. Рендерер
+    // ============================================================
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // ============================================================
+    // 4. Кнопка входа в VR
+    // ============================================================
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    // ============================================================
+    // 5. Окружение для металлических отражений
+    //    (без него металл выглядит чёрным)
+    // ============================================================
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envMap;
+
+    // ============================================================
+    // 6. Освещение
+    // ============================================================
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    directionalLight.position.set(3, 5, 2);
+    scene.add(directionalLight);
+
+    // ============================================================
+    // 7. Пол + сетка
+    // ============================================================
+    const floorGeometry = new THREE.PlaneGeometry(20, 20);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    scene.add(floor);
+
+    const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+    gridHelper.position.y = 0.001;
+    scene.add(gridHelper);
+
+    // ============================================================
+    // 8. Текстуры земного шара (загружаются с threejs.org)
+    // ============================================================
+    const textureLoader = new THREE.TextureLoader();
+
+    // Цветная карта Земли
+    const earthColorMap = textureLoader.load(
+      'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
+    );
+    earthColorMap.colorSpace = THREE.SRGBColorSpace;
+
+    // Карта нормалей (рельеф гор/океанов) — картинка с сайта threejs.org
+    const earthNormalMap = textureLoader.load(
+      'https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'
+    );
+
+    // Карта ночных огней / спекулярная карта (можно оставить, можно убрать)
+    const earthSpecularMap = textureLoader.load(
+      'https://threejs.org/examples/textures/planets/earth_specular_2048.jpg'
+    );
+
+    // Карта облаков (полупрозрачная)
+    const earthCloudsMap = textureLoader.load(
+      'https://threejs.org/examples/textures/planets/earth_clouds_1024.png'
+    );
+    earthCloudsMap.colorSpace = THREE.SRGBColorSpace;
+
+    // Улучшаем качество текстур — особенно заметно в VR!
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+    [earthColorMap, earthNormalMap, earthSpecularMap, earthCloudsMap].forEach((tex) => {
+      tex.anisotropy = maxAniso;
+    });
+
+    // ============================================================
+    // 9. Шар: диаметр 1 м (радиус 0.5 м)
+    // ============================================================
+    const SPHERE_RADIUS = 0.5;
+    const sphereGeometry = new THREE.SphereGeometry(SPHERE_RADIUS, 64, 64);
+
+    const sphereMaterial = new THREE.MeshStandardMaterial({
+      map: earthColorMap,
+      normalMap: earthNormalMap,
+      roughnessMap: earthSpecularMap, // используем как roughness (инверсия по сути)
+      metalness: 0.1,                  // земля — не металл; лёгкий блеск от воды
+      roughness: 0.8,
+      envMapIntensity: 0.8,
+    });
+
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    scene.add(sphere);
+
+    // ============================================================
+    // 10. Облака — второй чуть больший прозрачный шар
+    // ============================================================
+    const cloudGeometry = new THREE.SphereGeometry(SPHERE_RADIUS * 1.01, 64, 64);
+    const cloudMaterial = new THREE.MeshStandardMaterial({
+      map: earthCloudsMap,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+      metalness: 0.0,
+      roughness: 1.0,
+    });
+    const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    scene.add(clouds);
+
+    // ============================================================
+    // 11. Параметры анимации прыжка
+    // ============================================================
+    // Низ шара на 0.5 м от пола в верхней точке => центр = 1.0 м
+    // В нижней точке шар касается пола => центр = 0.5 м (радиус)
+    const START_Y = 1.0;
+    const GROUND_Y = SPHERE_RADIUS;
+
+    const FALL_DURATION = 2.5; // плавное опускание 2–3 с
+    const RISE_DURATION = 0.75; // подпрыгивание 0.5–1 с
+    const CYCLE_DURATION = FALL_DURATION + RISE_DURATION;
+
+    // Плавная интерполяция (ease-in-out)
+    const smoothstep = (t) => t * t * (3 - 2 * t);
+
+    // ============================================================
+    // 12. OrbitControls для просмотра мышью
+    // ============================================================
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.0, 0);
+    controls.enableDamping = true;
+    controls.update();
+
+    // ============================================================
+    // 13. Анимация
+    // ============================================================
+    const clock = new THREE.Clock();
+
+    renderer.setAnimationLoop(() => {
+      const t = clock.getElapsedTime();
+
+      // --- Прыжок шара ---
+      const localTime = t % CYCLE_DURATION;
+      let sphereY;
+
+      if (localTime < FALL_DURATION) {
+        // Падение
+        const progress = localTime / FALL_DURATION;
+        const eased = smoothstep(progress);
+        sphereY = START_Y + (GROUND_Y - START_Y) * eased;
+      } else {
+        // Подъём
+        const progress = (localTime - FALL_DURATION) / RISE_DURATION;
+        const eased = smoothstep(progress);
+        sphereY = GROUND_Y + (START_Y - GROUND_Y) * eased;
+      }
+
+      sphere.position.y = sphereY;
+      clouds.position.y = sphereY; // облака движутся вместе с шаром
+
+      // --- Вращение Земли ---
+      sphere.rotation.y = t * 0.15;
+      clouds.rotation.y = t * 0.18; // облака чуть быстрее — эффект «плывут»
+
+      controls.update();
+      renderer.render(scene, camera);
+    });
+
+    // ============================================================
+    // 14. Resize
+    // ============================================================
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

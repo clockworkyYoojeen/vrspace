@@ -38,7 +38,7 @@
     // --- Кубы ---
     const geometry = new THREE.BoxGeometry();
 
-    // --- задаём материал из которого "сделан" объект и его цвет
+    // --- задаём материал из которого "сделан" объект и его цвет ---
     const material1 = new THREE.MeshLambertMaterial({ color: 'orange' });
     const material2 = new THREE.MeshMatcapMaterial({ color: 'skyblue' });
     const material3 = new THREE.MeshToonMaterial({ color: 'pink' });
