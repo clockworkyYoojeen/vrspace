@@ -115,7 +115,8 @@
 
     // Цветная карта Земли
     const earthColorMap = textureLoader.load(
-      'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
+      'https://clockworkyyoojeen.github.io/vrspace/docs/assets/images/halloween.png'
+      // 'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
     );
     earthColorMap.colorSpace = THREE.SRGBColorSpace;
 
@@ -137,9 +138,10 @@
 
     // Улучшаем качество текстур — особенно заметно в VR!
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
-    [earthColorMap, earthNormalMap, earthSpecularMap, earthCloudsMap].forEach((tex) => {
-      tex.anisotropy = maxAniso;
-    });
+    // [earthColorMap, earthNormalMap, earthSpecularMap, earthCloudsMap].forEach((tex) => {
+    //   tex.anisotropy = maxAniso;
+    // });
+    earthColorMap.anisotropy = maxAniso;
 
     // ============================================================
     // 9. Шар: диаметр 1 м (радиус 0.5 м)
@@ -149,8 +151,8 @@
 
     const sphereMaterial = new THREE.MeshStandardMaterial({
       map: earthColorMap,
-      normalMap: earthNormalMap,
-      roughnessMap: earthSpecularMap, // используем как roughness (инверсия по сути)
+      // normalMap: earthNormalMap,
+      // roughnessMap: earthSpecularMap, // используем как roughness (инверсия по сути)
       metalness: 0.1,                  // земля — не металл; лёгкий блеск от воды
       roughness: 0.8,
       envMapIntensity: 0.8,
@@ -163,18 +165,18 @@
     // ============================================================
     // 10. Облака — второй чуть больший прозрачный шар
     // ============================================================
-    const cloudGeometry = new THREE.SphereGeometry(SPHERE_RADIUS * 1.01, 64, 64);
-    const cloudMaterial = new THREE.MeshStandardMaterial({
-      map: earthCloudsMap,
-      transparent: true,
-      opacity: 0.6,
-      depthWrite: false,
-      metalness: 0.0,
-      roughness: 1.0,
-    });
-    const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    clouds.position.set(1,2,-2);
-    scene.add(clouds);
+    // const cloudGeometry = new THREE.SphereGeometry(SPHERE_RADIUS * 1.01, 64, 64);
+    // const cloudMaterial = new THREE.MeshStandardMaterial({
+    //   map: earthCloudsMap,
+    //   transparent: true,
+    //   opacity: 0.6,
+    //   depthWrite: false,
+    //   metalness: 0.0,
+    //   roughness: 1.0,
+    // });
+    // const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    // clouds.position.set(1,2,-2);
+    // scene.add(clouds);
 
     // ============================================================
     // 11. Параметры анимации прыжка
@@ -224,11 +226,11 @@
       }
 
       sphere.position.y = sphereY;
-      clouds.position.y = sphereY; // облака движутся вместе с шаром
+      // clouds.position.y = sphereY; // облака движутся вместе с шаром
 
       // --- Вращение Земли ---
       sphere.rotation.y = t * 0.15;
-      clouds.rotation.y = t * 0.18; // облака чуть быстрее — эффект «плывут»
+      // clouds.rotation.y = t * 0.18; // облака чуть быстрее — эффект «плывут»
 
       controls.update();
       renderer.render(scene, camera);
