@@ -38,6 +38,8 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { VRButton } from 'three/addons/webxr/VRButton.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 
     // ============================================================
     // 1. Сцена
@@ -108,6 +110,17 @@
     gridHelper.position.y = 0.001;
     scene.add(gridHelper);
 
+    // Загрузчик для 3D моделей
+    const loader = new GLTFLoader();
+    loader.load(
+      '/static/models/park-bench.glb',
+      (gltf) => {
+        console.log('success');
+        console.log(gltf);
+        scene.add(gltf.scene.children[0])
+      }
+    )
+
     // ============================================================
     // 8. Текстуры земного шара (загружаются с threejs.org)
     // ============================================================
@@ -121,20 +134,20 @@
     earthColorMap.colorSpace = THREE.SRGBColorSpace;
 
     // Карта нормалей (рельеф гор/океанов) — картинка с сайта threejs.org
-    const earthNormalMap = textureLoader.load(
-      'https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'
-    );
+    // const earthNormalMap = textureLoader.load(
+    //   'https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'
+    // );
 
     // Карта ночных огней / спекулярная карта (можно оставить, можно убрать)
-    const earthSpecularMap = textureLoader.load(
-      'https://threejs.org/examples/textures/planets/earth_specular_2048.jpg'
-    );
+    // const earthSpecularMap = textureLoader.load(
+    //   'https://threejs.org/examples/textures/planets/earth_specular_2048.jpg'
+    // );
 
     // Карта облаков (полупрозрачная)
-    const earthCloudsMap = textureLoader.load(
-      'https://threejs.org/examples/textures/planets/earth_clouds_1024.png'
-    );
-    earthCloudsMap.colorSpace = THREE.SRGBColorSpace;
+    // const earthCloudsMap = textureLoader.load(
+    //   'https://threejs.org/examples/textures/planets/earth_clouds_1024.png'
+    // );
+    // earthCloudsMap.colorSpace = THREE.SRGBColorSpace;
 
     // Улучшаем качество текстур — особенно заметно в VR!
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
