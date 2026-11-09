@@ -127,9 +127,10 @@
     // ============================================================
     const textureLoader = new THREE.TextureLoader();
 
-    // Цветная карта Земли
+    // Цветная карта Земли (в данном случае текстура halloween)
     const earthColorMap = textureLoader.load(
-      'https://clockworkyyoojeen.github.io/vrspace/docs/assets/images/halloween.png'
+      './docs/assets/images/halloween.png'
+      // 'https://clockworkyyoojeen.github.io/vrspace/docs/assets/images/halloween.png'
       // 'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
     );
     earthColorMap.colorSpace = THREE.SRGBColorSpace;
