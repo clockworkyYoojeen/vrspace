@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'jsm/postprocessing/RenderPass.js';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { VRButton } from 'jsm/webxr/VRButton.js';
 import { UnrealBloomPass } from "jsm/postprocessing/UnrealBloomPass.js"
 
 const w = window.innerWidth;
