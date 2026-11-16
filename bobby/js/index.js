@@ -12,6 +12,7 @@ const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 100);
 camera.position.set(0, 2, 5);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(w, h);
+renderer.xr.enabled = true; // ОБЯЗАТЕЛЬНО для VR
 document.body.appendChild(renderer.domElement);
 
 const renderScene = new RenderPass(scene, camera);
@@ -57,15 +58,24 @@ const boxes = Array(800).fill().map(getSquare);
 boxes.forEach((b) => scene.add(b));
 
 let paused = false;
-function animate() {
-  requestAnimationFrame(animate);
+// function animate() {
+//   requestAnimationFrame(animate);
+//   if (!paused) {
+//     boxes.forEach((b) => b.userData.update());
+//     camera.rotation.z += 0.0006;
+//     composer.render(scene, camera);
+//   }
+// }
+// animate();
+
+// ВАЖНО: используем setAnimationLoop вместо requestAnimationFrame
+renderer.setAnimationLoop(function () {
   if (!paused) {
     boxes.forEach((b) => b.userData.update());
     camera.rotation.z += 0.0006;
-    composer.render(scene, camera);
   }
-}
-animate();
+  renderer.render(scene, camera); // Прямой рендеринг, без composer
+});
 
 function handleKeyDown(evt) {
   const { key } = evt;
