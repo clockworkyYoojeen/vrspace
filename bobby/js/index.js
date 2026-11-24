@@ -26,9 +26,11 @@ composer.addPass(bloomPass);
 
 document.body.appendChild(VRButton.createButton(renderer));
 
-function getSquare(){
+const colors = ['red', 'purple', 'orange', 'blue', 'yellow'];
+
+function getSquare(posY){
 const squareGeo = new THREE.PlaneGeometry(1, 1);
-const color = 0xff00ff;
+const color = colors[Math.floor(Math.random() * colors.length)];
 const basicMat = new THREE.MeshBasicMaterial({
   color,
   side: THREE.DoubleSide
@@ -36,10 +38,11 @@ const basicMat = new THREE.MeshBasicMaterial({
 
 const mesh = new THREE.Mesh( squareGeo, basicMat );
 const x = Math.round( Math.random() * 10 ) - 5;
-const y = Math.round( Math.random() * 10 ) - 5;
+
+// const y = Math.round( Math.random() * 10 ) - 5;
 const z = Math.round( Math.random() * 10 ) - 5;
 mesh.rotation.x = 90 * Math.PI / 180;
-mesh.position.set( x, y, z );
+mesh.position.set( x, posY, z );
 const speed = 0.05;
 const limit = 81;
 function update(){
@@ -56,14 +59,17 @@ return {
 
 const squares = [];
 const numSquares = 30;
+let posY = 5;
 for( let i = 0; i <= numSquares; i++ ){
-  let square = getSquare();
+  posY = posY * -1;
+  let square = getSquare(posY);
   scene.add( square.mesh );
   squares.push(square);
 }
 
 // ВАЖНО: используем setAnimationLoop вместо requestAnimationFrame
 renderer.setAnimationLoop(function () {
+  camera.rotation.z += 0.0003;
   squares.forEach( s => s.update() );
   renderer.render(scene, camera); // Прямой рендеринг, без composer
 });
